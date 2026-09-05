@@ -18,7 +18,7 @@
 		"php-ipv6": "*",
 		"php-64bit": "*",
 		"ext-sockets": "*",
-		"femboyteam/log": "^0.3.0 || ^0.4.0",
+		"femboyteam/log": "^0.4.0",
 		"femboyteam/binaryutils": "^0.2.0"
 	},
 	"require-dev": {
