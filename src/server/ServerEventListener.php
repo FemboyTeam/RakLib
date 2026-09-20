@@ -18,7 +18,7 @@ namespace raklib\server;
 
 interface ServerEventListener{
 
-	public function onClientConnect(int $sessionId, string $address, int $port, int $clientID) : void;
+	public function onClientConnect(int $sessionId, string $address, int $port, int $clientID, int $raknetProtocol) : void;
 
 	public function onClientDisconnect(int $sessionId, string $reason) : void;
 

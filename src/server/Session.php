@@ -84,13 +84,15 @@ class Session{
 	/** @var int */
 	private $internalId;
 
+	private int $raknetProtocol;
+
 	/** @var ReceiveReliabilityLayer */
 	private $recvLayer;
 
 	/** @var SendReliabilityLayer */
 	private $sendLayer;
 
-	public function __construct(Server $server, \Logger $logger, InternetAddress $address, int $clientId, int $mtuSize, int $internalId){
+	public function __construct(Server $server, \Logger $logger, InternetAddress $address, int $clientId, int $mtuSize, int $internalId, int $raknetProtocol){
 		if($mtuSize < self::MIN_MTU_SIZE){
 			throw new \InvalidArgumentException("MTU size must be at least " . self::MIN_MTU_SIZE . ", got $mtuSize");
 		}
@@ -102,6 +104,8 @@ class Session{
 		$this->lastUpdate = microtime(true);
 
 		$this->internalId = $internalId;
+
+		$this->raknetProtocol = $raknetProtocol;
 
 		$this->recvLayer = new ReceiveReliabilityLayer(
 			$this->logger,
@@ -130,6 +134,10 @@ class Session{
 	 */
 	public function getInternalId() : int{
 		return $this->internalId;
+	}
+
+	public function getRaknetProtocol() : int{
+		return $this->raknetProtocol;
 	}
 
 	public function getAddress() : InternetAddress{

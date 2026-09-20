@@ -25,6 +25,7 @@ use raklib\protocol\EncapsulatedPacket;
 use raklib\protocol\NACK;
 use raklib\protocol\Packet;
 use raklib\protocol\PacketSerializer;
+use raklib\RakLib;
 use raklib\utils\ExceptionTraceCleaner;
 use raklib\utils\InternetAddress;
 use function asort;
@@ -97,6 +98,9 @@ class Server implements ServerInterface{
 
 	/** @var int */
 	protected $nextSessionId = 0;
+
+	/** @var int[] */
+	protected $protocolsByAddress = [];
 
 	/** @var ServerEventSource */
 	private $eventSource;
@@ -400,6 +404,20 @@ class Server implements ServerInterface{
 		return isset($this->sessionsByAddress[$address->toString()]);
 	}
 
+	public function shareProtocol(InternetAddress $address, int $protocol) : void{
+		$this->checkSharedProtocols();
+
+		$this->protocolsByAddress[$address->toString()] = $protocol;
+	}
+
+	public function getProtocolByAddress(InternetAddress $address) : ?int{
+		return $this->protocolsByAddress[$address->toString()] ?? null;
+	}
+
+	private function removeProtocolInternal(InternetAddress $address) : void{
+		unset($this->protocolsByAddress[$address->toString()]);
+	}
+
 	public function createSession(InternetAddress $address, int $clientId, int $mtuSize) : Session{
 		$existingSession = $this->sessionsByAddress[$address->toString()] ?? null;
 		if($existingSession !== null){
@@ -414,7 +432,10 @@ class Server implements ServerInterface{
 			$this->nextSessionId &= 0x7fffffff; //we don't expect more than 2 billion simultaneous connections, and this fits in 4 bytes
 		}
 
-		$session = new Session($this, $this->logger, clone $address, $clientId, $mtuSize, $this->nextSessionId);
+		$raknetProtocol = $this->getProtocolByAddress($address) ?? RakLib::DEFAULT_PROTOCOL_VERSION;
+		$this->removeProtocolInternal($address);
+
+		$session = new Session($this, $this->logger, clone $address, $clientId, $mtuSize, $this->nextSessionId, $raknetProtocol);
 		$this->sessionsByAddress[$address->toString()] = $session;
 		$this->sessions[$this->nextSessionId] = $session;
 		$this->logger->debug("Created session for $address with MTU size $mtuSize");
@@ -428,7 +449,18 @@ class Server implements ServerInterface{
 
 	public function openSession(Session $session) : void{
 		$address = $session->getAddress();
-		$this->eventListener->onClientConnect($session->getInternalId(), $address->getIp(), $address->getPort(), $session->getID());
+		$this->eventListener->onClientConnect($session->getInternalId(), $address->getIp(), $address->getPort(), $session->getID(), $session->getRaknetProtocol());
+	}
+
+	private function checkSharedProtocols() : void{
+		if(count($this->protocolsByAddress) > 4096){
+			foreach($this->protocolsByAddress as $address => $protocol){
+				unset($this->protocolsByAddress[$address]);
+				if(count($this->protocolsByAddress) <= 4096){
+					break;
+				}
+			}
+		}
 	}
 
 	private function checkSessions() : void{
